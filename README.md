@@ -28,123 +28,262 @@ npm install -g dev-kit
    ```
 3. Build the project:
    ```bash
-   npm run build
+   npm run prepare
    ```
-4. Run the server:
-   ```bash
-   node build/index.js
-   ```
+## Environment Variable Configuration
 
-## Configuration
+Before running the server, you need to set the following environment variables:
 
-Create a `.env` file with your configuration:
+- `GITLAB_PERSONAL_ACCESS_TOKEN`: Your GitLab personal access token.
+- `GITLAB_API_URL`: Your GitLab API URL. Default: `https://gitlab.com/api/v4`
+- `GITLAB_READ_ONLY_MODE`: Optional: Enable read-only mode. Default set to 'true', restricts the server to only expose read-only operations. Useful for enhanced security or when write access is not needed. Also useful for using with Cursor and it's 40 tool limit.
 
-```
-# Required for Atlassian services (Jira & Confluence)
-ATLASSIAN_HOST=        # Your Atlassian instance URL (e.g., https://your-domain.atlassian.net)
-ATLASSIAN_EMAIL=       # Your Atlassian account email
-ATLASSIAN_TOKEN=       # Your Atlassian API token
+## Claude Integration / VS-Code Integration
 
-# Required for GitLab services
-GITLAB_HOST=           # Your GitLab instance URL
-GITLAB_TOKEN=          # Your GitLab personal access token
-
-# Required for GitHub services
-GITHUB_TOKEN=          # Your GitHub personal access token
-
-# Optional configurations
-ENABLE_TOOLS=          # Comma-separated list of tool groups to enable (empty = all enabled)
-PROXY_URL=             # Optional: HTTP/HTTPS proxy URL if needed
-PORT=                  # Port for SSE server (default: 8080)
-```
-
-## Claude Integration
-
-Configure Claude to use Dev Kit by adding this to your Claude configuration:
+Configure Claude to use Dev Kit by adding this to your Claude configuration or VS-Code configuration:
 
 ```json
-{
-  "mcpServers": {
-    "dev_kit": {
-      "command": "dev-kit",
-      "args": [
-        "-env", "/path/to/.env",
-        "-protocol", "stdio"  // or "sse" for Server-Sent Events protocol
-      ]
-    }
-  }
-}
+"mcp": {
+        "servers": {
+            "dev-kit": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@munichbughunter/dev-kit",
+                ],
+                "env": {
+                    "GITLAB_PERSONAL_ACCESS_TOKEN": "<ACCESS TOKEN>",
+                    "GITLAB_API_URL": "<GITLAB API URL>",
+                    "GITLAB_READ_ONLY_MODE": "false"
+                }
+            }
+        }
+    },
 ```
 
-## Protocol Support
-
-Dev Kit supports two protocols for communication:
-
-1. **STDIO** (default): Standard input/output based communication
-2. **SSE** (Server-Sent Events): HTTP-based protocol that enables real-time data streaming
-
-To use SSE protocol:
-
-1. Set the `-protocol` flag to `sse` when starting the server
-2. Configure the `PORT` environment variable (default: 8080) if needed
-3. The server will be available at `http://localhost:PORT`
-
-## Enable Tools
-
-You can use the `ENABLE_TOOLS` environment variable to specify which tool groups to enable. It is a comma-separated list of tool groups. If not set, all tools will be enabled. Leave it empty to enable all tools.
-
-## Available Tools
-
-### Group: confluence
-
-- **confluence_search**: Search Confluence
-- **confluence_get_page**: Get Confluence page content
-- **confluence_create_page**: Create a new Confluence page
-- **confluence_update_page**: Update an existing Confluence page
-
-### Group: github
-
-- **github_list_repos**: List GitHub repositories for a user or organization
-- **github_get_repo**: Get GitHub repository details
-- **github_list_prs**: List pull requests
-- **github_get_pr_details**: Get pull request details
-- **github_create_pr_comment**: Create a comment on a pull request
-- **github_get_file_content**: Get file content from a GitHub repository
-- **github_create_pr**: Create a new pull request
-- **github_pr_action**: Approve or close a pull request
-- **github_list_issues**: List GitHub issues for a repository
-- **github_get_issue**: Get GitHub issue details
-- **github_comment_issue**: Comment on a GitHub issue
-- **github_issue_action**: Close or reopen a GitHub issue
+## Available Tools 🛠️
 
 ### Group: gitlab
 
-- **gitlab_list_projects**: List GitLab projects
-- **gitlab_get_project**: Get GitLab project details
-- **gitlab_list_mrs**: List merge requests
-- **gitlab_get_mr_details**: Get merge request details
-- **gitlab_create_MR_note**: Create a note on a merge request
-- **gitlab_get_file_content**: Get file content from a GitLab repository
-- **gitlab_list_pipelines**: List pipelines for a GitLab project
-- **gitlab_list_commits**: List commits in a GitLab project within a date range
-- **gitlab_get_commit_details**: Get details of a commit
-- **gitlab_list_user_events**: List GitLab user events within a date range
-- **gitlab_list_group_users**: List all users in a GitLab group
-- **gitlab_create_mr**: Create a new merge request
+- **create_or_update_file**: Create or update a single file in a GitLab project. 📝
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `file_path` (string): Path to create/update the file
+     - `content` (string): File content
+     - `commit_message` (string): Commit message
+     - `branch` (string): Branch to create/update the file in
+     - `previous_path` (optional string): Previous file path when renaming a file
+   - Returns: File content and commit details
 
-### Group: jira
+- **push_files**: Push multiple files in a single commit. 📤
+  - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `branch` (string): Branch to push to
+     - `files` (array): Array of files to push, each with `file_path` and `content` properties
+     - `commit_message` (string): Commit message
+   - Returns: Updated branch reference
 
-- **jira_get_issue**: Retrieve detailed information about a specific Jira issue
-- **jira_search_issue**: Search for Jira issues using JQL
-- **jira_list_sprints**: List all active and future sprints for a specific Jira board
-- **jira_create_issue**: Create a new Jira issue with specified details
-- **jira_update_issue**: Modify an existing Jira issue's details
-- **jira_list_statuses**: Retrieve all available issue status IDs and their names for a specific Jira project
-- **jira_transition_issue**: Transition an issue through its workflow using a valid transition ID
+- **search_repositories**: Search for GitLab projects. 🔍
+  - Inputs:
+     - `search` (string): Search query
+     - `page` (optional number): Page number (default: 1)
+     - `per_page` (optional number): Results per page (default: 20, max: 100)
+   - Returns: Project search results
 
-### Group: script
+- **create_repository**: Create a new GitLab project. ➕
+  - Inputs:
+     - `name` (string): Project name
+     - `description` (optional string): Project description
+     - `visibility` (optional string): Project visibility level (public, private, internal)
+     - `initialize_with_readme` (optional boolean): Initialize with README
+   - Returns: Details of the created project
 
-- **execute_comand_line_script**: Safely execute command line scripts on the user's system with security restrictions
+- **get_file_contents**: Get the contents of a file or directory. 📂
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `file_path` (string): Path to the file/directory
+     - `ref` (optional string): Branch, tag, or commit SHA (default: default branch)
+   - Returns: File/directory content
+
+- **create_issue**: Create a new issue. 🐛
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `title` (string): Issue title
+     - `description` (string): Issue description
+     - `assignee_ids` (optional number[]): Array of assignee IDs
+     - `milestone_id` (optional number): Milestone ID
+     - `labels` (optional string[]): Array of labels
+   - Returns: Details of the created issue
+
+- **create_merge_request**: Create a new merge request. 🚀
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `title` (string): Merge request title
+     - `description` (string): Merge request description
+     - `source_branch` (string): Branch with changes
+     - `target_branch` (string): Branch to merge into
+     - `allow_collaboration` (optional boolean): Allow collaborators to push commits to the source branch
+     - `draft` (optional boolean): Create as a draft merge request
+   - Returns: Details of the created merge request
+
+- **fork_repository**: Fork a project. 🍴
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path to fork
+     - `namespace` (optional string): Namespace to fork into (default: user namespace)
+   - Returns: Details of the forked project
+
+- **create_branch**: Create a new branch. 🌿
+   - Inputs:
+     - `project_id` (string): Project ID or namespace/project_path
+     - `name` (string): New branch name
+     - `ref` (optional string): Ref to create the branch from (branch, tag, commit SHA, default: default branch)
+   - Returns: Created branch reference
+
+- **get_merge_request**: Get details of a merge request. ℹ️
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `merge_request_iid` (number): Merge request IID
+    - Returns: Merge request details
+
+- **get_merge_request_diffs**: Get changes (diffs) of a merge request. 
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `merge_request_iid` (number): Merge request IID
+      - `view` (optional string): Diff view type ('inline' or 'parallel')
+    - Returns: Array of merge request diff information
+
+- **update_merge_request**: Update a merge request. 🔄
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `merge_request_iid` (number): Merge request IID
+      - `title` (optional string): New title
+      - `description` (string): New description
+      - `target_branch` (optional string): New target branch
+      - `state_event` (optional string): Merge request state change event ('close', 'reopen')
+      - `remove_source_branch` (optional boolean): Remove source branch after merge
+      - `allow_collaboration` (optional boolean): Allow collaborators to push commits to the source branch
+    - Returns: Updated merge request details
+
+- **create_note**: Create a new note (comment) to an issue or merge request. 💬
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `noteable_type` (string): Type of noteable ("issue" or "merge_request")
+      - `noteable_iid` (number): IID of the issue or merge request
+      - `body` (string): Note content
+    - Returns: Details of the created note
+
+- **list_merge_request_discussions**: List discussion items for a merge request. 💬
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `merge_request_iid` (number): Merge request IID
+    - Returns: Merge request discussions
+
+- **update_merge_request_note**: Modify an existing merge request thread note
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `merge_request_iid` (number): Merge request IID
+      - `discussion_id` (string): The ID of a thread
+      - `note_id` (number): The ID of a thread note
+      - `body`(string): The content of the note or reply
+      - `resolved` (boolean): OPTIONAL: Resolve or unresolve the note
+    - Returns: Updated merge request note
+
+- **get_issue_link**: Get a specific issue link. 
+    - Inputs:
+      - `project_id` (string): Project ID or namespace/project_path
+      - `issue_iid` (number): The internal ID of a project's issue
+      - `issue_link_id` (number): ID of an issue relationship
+    - Returns: The issue link
+
+- **list_projects**: List accessible projects with rich filtering options 📊
+    - Inputs:
+      - Search/filtering:
+        - `search`
+        - `owned`
+        - `membership`
+        - `archived`
+        - `visibility`
+      - Features filtering:
+        - `with_issues_enabled`
+        - `with_merge_requests_enabled`
+      - Sorting:
+        - `order_by`
+        - `sort`
+      - Access control:
+        - `min_access_level`
+      - Pagination:
+        - `page`
+        - `per_page`
+        - `simple`
+    - Returns: Array of projects 
+
+- **list_labels**: List all labels for a project with filtering options 🏷️
+    - Inputs:
+      - `project_id` (string): Project ID or path
+      - `with_counts` (optional): Include issue and merge request counts
+      - `include_ancestor_groups` (optional): Include ancestor groups
+      - `search` (optional): Filter labels by keyword
+    - Returns: Array of labels
+
+- **get_label**: Get a single label from a project
+    - Inputs:
+      -  `project_id` (string): Project ID or path
+      - `label_id` (number/string): Label ID or name
+      - `include_ancestor_groups` (optional): Include ancestor groups 
+    - Returns: label details
+
+- **create_label**: Create a new label in an object 🏷️➕
+    - Inputs:
+      - `project_id` (string): Project ID or path
+      - `name` (string): Label name
+      - `color` (string): Color in hex format (e.g., "#FF0000")
+      - `description` (optional): Label description
+      - `priority` (optional): Label priority
+    - Returns: Created label details
+
+- **update_label**: Update an existing label in a project 🏷️✏️
+    - Inputs:
+      - `project_id` (string): Project ID or path
+      - `label_id` (number/string): Label ID or name
+      - `new_name` (optional): New label name
+      - `color` (optional): New color in hex format
+      - `description` (optional): New description
+      - `priority` (optional): New priority
+    - Returns: Updated label details
+
+- **delete_label**: Delete a label from a project 🏷️❌
+    - Inputs:
+      - `project_id` (string): Project ID or path
+      - `label_id` (number/string): Label ID or name
+    - Returns: Success message
+
+- **list_group_projects**: List all projects in a GitLab group. 📂
+    - Inputs:
+      - `group_id` (string): Project ID or namespace/project_path
+      - Filtering options:
+        - `include_subgroups` (optional boolean): Include projects from subgroups
+        - `search` (optional string): Search term to filter projects
+        - `archived` (optional boolean): Filter for archived projects
+        - `visibility` (optional string): Filter by project visibility (public/internal/private)
+        - `with_programming_language` (optional string): Filter by programming language
+        - `starred` (optional boolean): Filter by starred projects
+      - Feature filtering:
+        - `with_issues_enabled` (optional boolean): Filter projects with issues feature enabled
+        - `with_merge_requests_enabled` (optional boolean): Filter projects with merge requests feature enabled
+        - `min_access_level` (optional number): Filter by minimum access level
+      - Pagination:
+        - `page` (optional number): Page number
+        - `per_page` (optional number): Results per page
+      - Sorting:
+        - `order_by` (optional string): Field to sort by
+        - `sort` (optional string): Sort direction (asc/desc)
+      - Additional data:
+        - `statistics` (optional boolean): Include project statistics
+        - `with_custom_attributes` (optional boolean): Include custom attributes
+        - `with_security_reports` (optional boolean): Include security reports
+    - Returns: List of projects
+
+
 
 ## Development
 
@@ -153,7 +292,7 @@ To contribute to this project:
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Make your changes
-4. Build: `npm run build`
+4. Build: `npm run prepare`
 5. Test your changes
 
 ## License
